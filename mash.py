@@ -105,7 +105,7 @@ def find_mashup_candidates(df, song_title):
 df['key'] = df['key'].map(int_to_camelot)
 
 # Example usage with an actual song title from your dataset
-song_title = 'LocationtartKhalidtalb4Mainstream Radio June 2017'  # Replace with an actual song title from your dataset
+song_title = '<Redman & Method Man - How HightartEgo Trip 1995talb:Greatest Hip Hop Singles 1995'  # Replace with an actual song title from your dataset
 mashup_candidates = find_mashup_candidates(df, song_title)
 
 if not mashup_candidates.empty:
@@ -128,6 +128,7 @@ if not mashup_candidates.empty:
 
     # Add distances to candidates DataFrame
     mashup_candidates['distance'] = mashup_candidates.apply(compute_distance, axis=1)
+    
 
     # Sort candidates by distance
     mashup_candidates = mashup_candidates.sort_values(by='distance')

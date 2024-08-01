@@ -2,7 +2,11 @@ const fs = require("fs");
 
 // Function to clean track name by removing special characters and control codes
 function cleanTrackName(trackName) {
-  return trackName.replace(/[\u0000-\u001F\u007F-\u009F\u2028\u2029]/g, "").replace(/\s+/g, " ").trim();
+  return trackName
+    .replace(/[\u0000-\u001F\u007F-\u009F\u2028\u2029]/g, "")
+    .replace(/[\\\/]+/g, "") // Remove backslashes and forward slashes
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 // Function to clean and truncate file path (not used in the final output)
@@ -26,7 +30,7 @@ function parseSeratoData(filePath) {
         const entry = trackEntries[i];
 
         // Extract the track name
-        const trackNameStart = entry.indexOf("tsng") + 4;
+        const trackNameStart = 0; // Start from the beginning of the entry
         const trackNameEnd = entry.indexOf("tgen");
         const trackName = entry
           .substring(trackNameStart, trackNameEnd)
