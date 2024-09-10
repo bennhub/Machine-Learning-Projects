@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mashup Candidate Finder</title>
+</head>
+<body>
+    <h1>Mashup Candidate Finder</h1>
+    <form id="mashupForm">
+        <label for="songTitle">Enter Song Title:</label>
+        <input type="text" id="songTitle" name="songTitle" required>
+        <button type="submit">Find Mashups</button>
+    </form>
+    <h2>Results:</h2>
+    <pre id="results"></pre>
+
+    <script>
+        document.getElementById('mashupForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const songTitle = document.getElementById('songTitle').value;
+
+            fetch('/find_mashups', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ song_title: songTitle }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultsElement = document.getElementById('results');
+                if (Array.isArray(data) && data.length > 0) {
+                    resultsElement.textContent = JSON.stringify(data, null, 2);
+                } else {
+                    resultsElement.textContent = 'No mashup candidates found.';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+    </script>
+</body>
+</html>

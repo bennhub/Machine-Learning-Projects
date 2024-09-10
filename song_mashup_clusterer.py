@@ -1,3 +1,4 @@
+from flask import Flask, request, jsonify, render_template
 import json
 import numpy as np
 import pandas as pd
@@ -8,6 +9,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.impute import SimpleImputer
 from scipy.spatial import distance
+
+app = Flask(__name__)
 
 # Define key mappings from Camelot notation to integers and vice versa
 camelot_to_int = {
@@ -24,10 +27,6 @@ with open('json-files/tracks.json', 'r') as file:
 
 # Convert the JSON data to a pandas DataFrame
 df = pd.DataFrame(song_data)
-
-# Print column names and the first few rows to verify the DataFrame
-print("Columns in DataFrame:", df.columns)
-print("First few rows of DataFrame:\n", df.head())
 
 # Map the string keys to integers
 df['key'] = df['key'].map(camelot_to_int)
@@ -92,9 +91,7 @@ df['cluster'] = cluster_assignments
 
 # Function to find songs in the same cluster
 def find_mashup_candidates(df, song_title):
-    # Check if the song title exists in the DataFrame
     if song_title not in df['track'].values:
-        print(f"Song title '{song_title}' not found in the DataFrame.")
         return pd.DataFrame()  # Return an empty DataFrame
 
     song_cluster = df[df['track'] == song_title]['cluster'].values[0]
@@ -104,39 +101,41 @@ def find_mashup_candidates(df, song_title):
 # Replace numerical keys with Camelot notation
 df['key'] = df['key'].map(int_to_camelot)
 
-# Example usage with an actual song title from your dataset
-song_title = 'Got to be enoughtartCon Funk Shun'  # Replace with an actual song title from your dataset
-mashup_candidates = find_mashup_candidates(df, song_title)
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-if not mashup_candidates.empty:
-    # Calculate distances and add them to DataFrame
-    song_features = df[df['track'] == song_title][['key', 'bpm']].values
-    song_features_int = [camelot_to_int.get(k, np.nan) for k in song_features[:, 0]]  # Ensure numeric conversion
-    song_features = np.hstack((np.array(song_features_int).reshape(-1, 1), song_features[:, 1].reshape(-1, 1)))
-    
-    song_features = scaler.transform(song_features)  # Normalize features
-    song_features_pca = pca.transform(song_features).flatten()  # Apply PCA transformation and ensure it's 1-D
-    
-    def compute_distance(row):
-        candidate_features = np.array([camelot_to_int.get(row['key'], np.nan), row['bpm']])
-        # Handle missing or NaN values
-        if np.isnan(candidate_features).any():
-            return np.nan
-        candidate_features = scaler.transform([candidate_features])
-        candidate_features_pca = pca.transform(candidate_features).flatten()  # Ensure it's 1-D
-        return distance.euclidean(song_features_pca, candidate_features_pca)
+@app.route('/find_mashups', methods=['POST'])
+def find_mashups():
+    song_title = request.json.get('song_title')
+    if not song_title:
+        return jsonify({"error": "No song title provided"}), 400
 
-    # Add distances to candidates DataFrame
-    mashup_candidates['distance'] = mashup_candidates.apply(compute_distance, axis=1)
-    
+    mashup_candidates = find_mashup_candidates(df, song_title)
 
-    # Sort candidates by distance
-    mashup_candidates = mashup_candidates.sort_values(by='distance')
+    if not mashup_candidates.empty:
+        song_features = df[df['track'] == song_title][['key', 'bpm']].values
+        song_features_int = [camelot_to_int.get(k, np.nan) for k in song_features[:, 0]]  # Ensure numeric conversion
+        song_features = np.hstack((np.array(song_features_int).reshape(-1, 1), song_features[:, 1].reshape(-1, 1)))
+        
+        song_features = scaler.transform(song_features)  # Normalize features
+        song_features_pca = pca.transform(song_features).flatten()  # Apply PCA transformation and ensure it's 1-D
+        
+        def compute_distance(row):
+            candidate_features = np.array([camelot_to_int.get(row['key'], np.nan), row['bpm']])
+            if np.isnan(candidate_features).any():
+                return np.nan
+            candidate_features = scaler.transform([candidate_features])
+            candidate_features_pca = pca.transform(candidate_features).flatten()  # Ensure it's 1-D
+            return distance.euclidean(song_features_pca, candidate_features_pca)
+        
+        mashup_candidates['distance'] = mashup_candidates.apply(compute_distance, axis=1)
+        mashup_candidates = mashup_candidates.sort_values(by='distance')
 
-    # Save the sorted mashup candidates to a JSON file
-    mashup_candidates_json = mashup_candidates[['track', 'key', 'bpm', 'cluster', 'distance']].to_dict(orient='records')
-    with open('json-files/playlist.json', 'w') as f:
-        json.dump(mashup_candidates_json, f, indent=4)
-    print("Mashup candidates saved to 'playlist.json'.")
-else:
-    print("No mashup candidates found.")
+        results = mashup_candidates[['track', 'key', 'bpm', 'cluster', 'distance']]
+        return jsonify(results.to_dict(orient='records'))
+    else:
+        return jsonify({"message": "No mashup candidates found."})
+
+if __name__ == '__main__':
+    app.run(debug=True)

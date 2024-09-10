@@ -71,7 +71,7 @@ This project is designed to cluster songs based on their musical key and BPM (Be
 
 3. **Run the Script**:
     ```bash
-    python song_clustering.py
+    python song_mashup_clusterer.py
     ```
 
 4. **Check the Output**:
